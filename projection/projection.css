@@ -89,7 +89,7 @@ html, body {
 
 .idle-church {
   font-family: var(--font-display);
-  font-size: clamp(14px, 2vw, 22px);
+  font-size: clamp(20px, 2vw, 22px);
   letter-spacing: 4px;
   text-transform: uppercase;
   color: var(--text-label);

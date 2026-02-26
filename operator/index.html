@@ -22,6 +22,14 @@
       </div>
     </div>
     <div class="header-controls">
+      <button id="btnIncreaseFont" class="btn btn-vol-up" onclick="toggleFontSize()">
+        <!-- <span class="btn-icon">⬡</span> -->
+        <span class="btn-label-plus">+</span>
+      </button>
+      <button id="btnDecreaseFont" class="btn btn-vol-down" onclick="toggleFontSize()">
+        <!-- <span class="btn-icon">⬡</span> -->
+        <span class="btn-label-minus">-</span>
+      </button>
       <button id="btnProjection" class="btn btn-project" onclick="toggleProjection()">
         <!-- <span class="btn-icon">⬡</span> -->
         <span class="btn-label">Open Projection</span>
@@ -72,6 +80,7 @@
   <footer class="status-bar">
     <span id="statusText" class="status-text">Ready — Select a hymn to begin</span>
     <div class="status-right">
+      <span class="shortcut-hint">+/- To change verse font size</span>
       <span class="shortcut-hint">← → Arrow keys to navigate</span>
       <span class="shortcut-hint">B to blank screen</span>
       <div class="projection-indicator" id="projectionIndicator">

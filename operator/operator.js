@@ -290,6 +290,14 @@ function setupKeyboard() {
         e.preventDefault();
         blankScreen();
         break;
+      
+      case '+':
+        e.preventDefault();
+        break
+      
+      case '-':
+        e.preventDefault();
+        break;
 
       case '/':
         e.preventDefault();
@@ -297,6 +305,13 @@ function setupKeyboard() {
         break;
     }
   });
+}
+
+// ─────────────────────────────────────────────
+// Utility Functions
+// ─────────────────────────────────────────────
+function adjustVerseFont(direction) {
+  
 }
 
 function navigateBlock(direction) {
