@@ -251,6 +251,19 @@ function clearSearch() {
 }
 
 // ─────────────────────────────────────────────
+// Toggle Font Size
+// ─────────────────────────────────────────────
+
+// Font size: steps of 10%, range 50%–100%
+let currentFontSize = 200;
+
+async function adjustFontSize(direction) {
+  currentFontSize = Math.min(400, Math.max(50, currentFontSize + direction * 20));
+  document.getElementById('fontSizeValue').textContent = currentFontSize + '%';
+  await window.hymnAPI.setFontSize(currentFontSize);
+}
+
+// ─────────────────────────────────────────────
 // Keyboard Navigation
 // ─────────────────────────────────────────────
 function setupKeyboard() {
@@ -290,14 +303,6 @@ function setupKeyboard() {
         e.preventDefault();
         blankScreen();
         break;
-      
-      case '+':
-        e.preventDefault();
-        break
-      
-      case '-':
-        e.preventDefault();
-        break;
 
       case '/':
         e.preventDefault();
@@ -305,13 +310,6 @@ function setupKeyboard() {
         break;
     }
   });
-}
-
-// ─────────────────────────────────────────────
-// Utility Functions
-// ─────────────────────────────────────────────
-function adjustVerseFont(direction) {
-  
 }
 
 function navigateBlock(direction) {

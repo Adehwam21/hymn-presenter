@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld('hymnAPI', {
   // Blank the projection screen
   blankScreen: () => ipcRenderer.invoke('blank-screen'),
 
+  // Increase or decrease font size
+  setFontSize: (size) => ipcRenderer.invoke('set-font-size', size),
+
   // Listen for projection window closed event
   onProjectionClosed: (callback) => {
     ipcRenderer.on('projection-closed', callback);
@@ -28,6 +31,11 @@ contextBridge.exposeInMainWorld('hymnAPI', {
   // Listen for display-block event (used by projection window)
   onDisplayBlock: (callback) => {
     ipcRenderer.on('display-block', (event, data) => callback(data));
+  },
+
+  // Listen for increase font size
+  onSetFontSize: (callback) => {
+    ipcRenderer.on('set-font-size', (event, size) => callback(size));
   },
 
   // Listen for blank screen event (used by projection window)

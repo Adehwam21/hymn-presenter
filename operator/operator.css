@@ -163,6 +163,44 @@ html, body {
   box-shadow: 0 0 16px var(--accent-glow);
 }
 
+.font-size-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.font-size-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.font-size-value {
+  font-size: 11px;
+  color: var(--text-secondary);
+  min-width: 36px;
+  text-align: center;
+}
+
+.btn-font {
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.btn-font:hover {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+
+.header-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-light);
+  margin: 0 4px;
+}
+
 .btn-blank:hover {
   color: #ff6b6b;
   border-color: #ff6b6b44;

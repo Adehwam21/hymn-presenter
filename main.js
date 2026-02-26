@@ -117,6 +117,13 @@ ipcMain.handle('get-hymn-blocks', (event, hymnId) => {
   }
 });
 
+ipcMain.handle('set-font-size', (event, size) => {
+  if (projectionWindow) {
+    projectionWindow.webContents.send('set-font-size', size);
+  }
+  return true;
+});
+
 ipcMain.handle('open-projection', () => {
   if (!projectionWindow) createProjectionWindow();
   return true;

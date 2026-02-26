@@ -22,14 +22,14 @@
       </div>
     </div>
     <div class="header-controls">
-      <button id="btnIncreaseFont" class="btn btn-vol-up" onclick="toggleFontSize()">
-        <!-- <span class="btn-icon">⬡</span> -->
-        <span class="btn-label-plus">+</span>
-      </button>
-      <button id="btnDecreaseFont" class="btn btn-vol-down" onclick="toggleFontSize()">
-        <!-- <span class="btn-icon">⬡</span> -->
-        <span class="btn-label-minus">-</span>
-      </button>
+<!-- Font size controls -->
+      <div class="font-size-control">
+        <span class="font-size-label">TEXT</span>
+        <button class="btn btn-font" onclick="adjustFontSize(-1)">A−</button>
+        <span class="font-size-value" id="fontSizeValue">100%</span>
+        <button class="btn btn-font" onclick="adjustFontSize(1)">A+</button>
+      </div>
+      <div class="header-divider"></div>
       <button id="btnProjection" class="btn btn-project" onclick="toggleProjection()">
         <!-- <span class="btn-icon">⬡</span> -->
         <span class="btn-label">Open Projection</span>
