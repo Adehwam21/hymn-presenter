@@ -18,15 +18,24 @@
   "build": {
     "appId": "com.nhuc.hymnprojector",
     "productName": "NHUC Hymn Projector",
-    "win": {
-      "target": "nsis"
-    },
-    "mac": {
-      "target": "dmg"
-    },
-    "files": [
-      "**/*",
-      "!node_modules/electron*"
-    ]
+    "icon": "assets/icons/logo-transparent.ico",
+    "extraResources": [
+    {
+      "from": "data/mhb_clean.db",
+      "to": "mhb_clean.db"
+    }
+  ],
+  "win": {
+    "target": "nsis",
+    "icon": "assets/icons/logo-transparent.ico"
+  },
+  "mac": {
+    "target": "dmg",
+    "icon": "assets/icons/logo-transparent.icns"
+  },
+  "files": [
+    "**/*",
+    "!node_modules/electron*"
+  ]
   }
 }

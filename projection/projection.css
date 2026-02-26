@@ -4,7 +4,7 @@
   --text-verse:   #08631c;
   --text-refrain: #a8d4ff;
   --text-chorus:  #d4b8ff;
-  --text-meta: #ee1515df;
+  --text-meta:    #ee1515df;
   --text-label:   #ee1515df;
   --accent:       #c9a84c;
 
@@ -84,7 +84,7 @@ html, body {
 
 .idle-cross {
   font-size: clamp(40px, 8vw, 80px);
-  color: var(--accent);
+  color: var(--text-label);
 }
 
 .idle-church {
@@ -92,7 +92,7 @@ html, body {
   font-size: clamp(14px, 2vw, 22px);
   letter-spacing: 4px;
   text-transform: uppercase;
-  color: #ffffff;
+  color: var(--text-label);
 }
 
 /* ── Content State ──────────────────────────────────── */
@@ -134,7 +134,7 @@ html, body {
   color: var(--accent);
   letter-spacing: 2px;
   padding: 4px 12px;
-  border: 1px solid rgba(201,168,76,0.3);
+  border: 1px solid rgba(190, 157, 66, 0.887);
   border-radius: 20px;
 }
 
@@ -151,16 +151,27 @@ html, body {
 }
 
 /* Block label (Verse 1, Refrain, etc.) */
-.block-label-display {
+/* .block-label-display {
   font-family: var(--font-display);
-  font-size: clamp(24px, 1.4vw, 26px);
+  font-size: clamp(18px, 1.4vw, 20px);
   font-weight: 800;
   letter-spacing: 3px;
   text-transform: uppercase;
   color: var(--text-label);
-  margin-bottom: clamp(16px, 3vh, 32px);
+  margin-bottom: clamp(8px, 3vh, 20px);
   opacity: 0;
   animation: labelFadeIn 400ms 150ms ease both;
+} */
+
+.block-label-display {
+  font-family: var(--font-display);
+  font-size: clamp(18px, 1.2vw, 20px);
+  font-weight: 900;
+  color: var(--accent);
+  letter-spacing: 2px;
+  padding: 4px 12px;
+  border: 1px solid rgba(190, 157, 66, 0.887);
+  border-radius: 20px;
 }
 
 @keyframes labelFadeIn {
@@ -172,12 +183,12 @@ html, body {
 .verse-text {
   font-family: var(--font-verse);
   font-size: clamp(40px, 4.5vw, 62px);
-  font-weight: 800;
-  line-height: 1.2;
+  font-weight: 600;
+  line-height: 1.105;
   color: var(--text-verse);
   white-space: pre-line;
   text-align: center;
-  max-width: 90vw;
+  max-width: 100vw;
   opacity: 0;
   animation: textReveal 500ms 200ms ease both;
 }
