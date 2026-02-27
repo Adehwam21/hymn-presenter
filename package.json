@@ -20,8 +20,9 @@
     "sql.js": "^1.11.0"
   },
   "build": {
+    "compression": "maximum",
     "appId": "com.nhuc.hymnprojector",
-    "productName": "NHUC Hymn Projector",
+    "productName": "NHUC Hymn Presenter",
     "icon": "assets/icons/logo-transparent.ico",
     "publish": {
       "provider": "github",
@@ -47,7 +48,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "NHUC Hymn Projector"
+      "shortcutName": "Hymn Presenter"
     },
     "files": [
       "**/*",
