@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const Database = require('./data/database');
 
@@ -86,6 +87,8 @@ app.whenReady().then(async () => {
   db = new Database();
   await db.connect();
   createOperatorWindow();
+  setupAutoUpdater();
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createOperatorWindow();
   });
@@ -219,3 +222,66 @@ ipcMain.handle('set-font-size', (event, size) => {
 // IPC — Windows
 // ─────────────────────────────────────────────
 ipcMain.handle('open-editor', () => { createEditorWindow(); return true; });
+
+
+
+
+
+// ─────────────────────────────────────────────
+// Auto Updater
+// ─────────────────────────────────────────────
+function setupAutoUpdater() {
+  // Don't check for updates in development
+  if (!app.isPackaged) return;
+
+  autoUpdater.autoDownload = false; // don't download automatically
+  autoUpdater.autoInstallOnAppQuit = false;
+
+  // Check for updates 5 seconds after launch
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch(err => {
+      console.log('Update check failed:', err.message);
+    });
+  }, 5000);
+
+  // New version found — notify operator window
+  autoUpdater.on('update-available', (info) => {
+    if (operatorWindow) {
+      operatorWindow.webContents.send('update-available', {
+        version: info.version,
+        releaseNotes: info.releaseNotes || ''
+      });
+    }
+  });
+
+  // No update found — do nothing
+  autoUpdater.on('update-not-available', () => {
+    console.log('App is up to date.');
+  });
+
+  // User triggered download
+  ipcMain.handle('download-update', () => {
+    autoUpdater.downloadUpdate();
+    return true;
+  });
+
+  // Download progress
+  autoUpdater.on('download-progress', (progress) => {
+    if (operatorWindow) {
+      operatorWindow.webContents.send('update-progress', Math.round(progress.percent));
+    }
+  });
+
+  // Download complete — ready to install
+  autoUpdater.on('update-downloaded', () => {
+    if (operatorWindow) {
+      operatorWindow.webContents.send('update-downloaded');
+    }
+  });
+
+  // Install and restart
+  ipcMain.handle('install-update', () => {
+    autoUpdater.quitAndInstall();
+    return true;
+  });
+}

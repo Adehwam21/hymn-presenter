@@ -35,5 +35,13 @@ contextBridge.exposeInMainWorld('hymnAPI', {
   onProjectionClosed: (cb) => ipcRenderer.on('projection-closed', cb),
   onDisplayBlock:     (cb) => ipcRenderer.on('display-block', (e, data) => cb(data)),
   onBlankScreen:      (cb) => ipcRenderer.on('blank-screen', cb),
-  onSetFontSize:      (cb) => ipcRenderer.on('set-font-size', (e, size) => cb(size)),
+  onSetFontSize: (cb) => ipcRenderer.on('set-font-size', (e, size) => cb(size)),
+  
+
+  // ── Updates ──────────────────────────────────────────
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate:  () => ipcRenderer.invoke('install-update'),
+  onUpdateAvailable: (cb) => ipcRenderer.on('update-available', (e, info) => cb(info)),
+  onUpdateProgress:  (cb) => ipcRenderer.on('update-progress', (e, pct) => cb(pct)),
+  onUpdateDownloaded:(cb) => ipcRenderer.on('update-downloaded', cb),
 });
