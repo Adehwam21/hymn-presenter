@@ -344,3 +344,44 @@ function updateProjectionIndicator(live) {
 function setStatus(text) {
   document.getElementById('statusText').textContent = text;
 }
+
+
+
+// ─────────────────────────────────────────────
+// Auto Update
+// ─────────────────────────────────────────────
+let updateReady = false;
+
+window.hymnAPI.onUpdateAvailable((info) => {
+  const bar = document.getElementById('updateBar');
+  const msg = document.getElementById('updateMessage');
+  msg.textContent = `Version ${info.version} is available.`;
+  bar.style.display = 'flex';
+});
+
+window.hymnAPI.onUpdateProgress((pct) => {
+  const btn = document.getElementById('updateBtn');
+  btn.textContent = `Downloading... ${pct}%`;
+  btn.disabled = true;
+});
+
+window.hymnAPI.onUpdateDownloaded(() => {
+  const btn = document.getElementById('updateBtn');
+  const msg = document.getElementById('updateMessage');
+  msg.textContent = 'Update ready. Restart to install.';
+  btn.textContent = 'Restart & Install';
+  btn.disabled = false;
+  updateReady = true;
+});
+
+async function handleUpdateAction() {
+  if (updateReady) {
+    await window.hymnAPI.installUpdate();
+  } else {
+    await window.hymnAPI.downloadUpdate();
+  }
+}
+
+function dismissUpdate() {
+  document.getElementById('updateBar').style.display = 'none';
+}

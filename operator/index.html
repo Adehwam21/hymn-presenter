@@ -46,6 +46,14 @@
     </div>
   </header>
 
+  <!-- ── Update Notification Bar ── -->
+  <div class="update-bar" id="updateBar" style="display:none;">
+    <span class="update-icon">↑</span>
+    <span class="update-message" id="updateMessage">A new version is available.</span>
+    <button class="update-btn" id="updateBtn" onclick="handleUpdateAction()">Download Update</button>
+    <button class="update-dismiss" onclick="dismissUpdate()">✕</button>
+  </div>
+
   <!-- ── Main Layout ── -->
   <main class="app-body">
 

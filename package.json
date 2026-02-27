@@ -1,8 +1,11 @@
 {
-  "name": "nhuc-hymns-projector",
+  "name": "hymn-presenter",
   "version": "1.0.0",
-  "description": "Methodist Hymn Projector built for New Hope Universal Church (NHUC)",
-  "author": {"name": "Aaron Katey Kudadjie", "github": "Adehwam@21"},
+  "description": "A hymn presenter app built for New Hope Universal Church (NHUC)",
+  "author": {
+    "name": "Aaron Katey Kudadjie",
+    "github": "https://github.com/Adehwam21/"
+  },
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -13,29 +16,42 @@
     "electron-builder": "^26.8.1"
   },
   "dependencies": {
+    "electron-updater": "^6.8.3",
     "sql.js": "^1.11.0"
   },
   "build": {
     "appId": "com.nhuc.hymnprojector",
     "productName": "NHUC Hymn Projector",
     "icon": "assets/icons/logo-transparent.ico",
+    "publish": {
+      "provider": "github",
+      "owner": "Adehwam21",
+      "repo": "hymn-presenter"
+    },
     "extraResources": [
-    {
-      "from": "data/mhb_clean.db",
-      "to": "mhb_clean.db"
-    }
-  ],
-  "win": {
-    "target": "nsis",
-    "icon": "assets/icons/logo-transparent.ico"
-  },
-  "mac": {
-    "target": "dmg",
-    "icon": "assets/icons/logo-transparent.icns"
-  },
-  "files": [
-    "**/*",
-    "!node_modules/electron*"
-  ]
+      {
+        "from": "data/mhb_clean.db",
+        "to": "mhb_clean.db"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icons/logo-transparent.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icons/logo-transparent.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "NHUC Hymn Projector"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/electron*"
+    ]
   }
 }
