@@ -1,68 +1,102 @@
-const path = require('path');
-const fs = require('fs');
+const path      = require('path');
+const fs        = require('fs');
+const https     = require('https');
 const initSqlJs = require('sql.js');
 
-class Database {
-  constructor() {
-    this.db = null;
-  }
+// ─────────────────────────────────────────────
+// Supabase config
+// ─────────────────────────────────────────────
+const SUPABASE_URL  = 'https://vhjpxdkisexajxiorktv.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoanB4ZGtpc2V4YWp4aW9ya3R2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjMzMDM1MSwiZXhwIjoyMDg3OTA2MzUxfQ.xhIHgXKKGW3kbdixL_uPvSZ985KF6BRKrjct4XSR5Ns';
 
-  async connect() {
-    try {
-      const possiblePaths = [
-        path.join(process.resourcesPath || '', 'mhb_clean.db'),
-        path.join(__dirname, 'mhb_clean.db'),
-        path.join(__dirname, '..', 'data', 'mhb_clean.db'),
-      ];
+// ─────────────────────────────────────────────
+// Local cache path
+// ─────────────────────────────────────────────
+const { app } = require('electron');
 
-      let dbPath = null;
-      for (const p of possiblePaths) {
-        if (fs.existsSync(p)) { dbPath = p; break; }
+function getCacheDir() {
+  const dir = path.join(app.getPath('userData'), 'nhuc-db');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function getCachedDbPath() { return path.join(getCacheDir(), 'cache.db'); }
+
+// ─────────────────────────────────────────────
+// Supabase REST helpers
+// ─────────────────────────────────────────────
+function sbFetch(method, path_, body = null) {
+  return new Promise((resolve, reject) => {
+    const url     = new URL(`${SUPABASE_URL}/rest/v1/${path_}`);
+    const options = {
+      method,
+      hostname: url.hostname,
+      path:     url.pathname + url.search,
+      headers: {
+        'apikey':        SUPABASE_ANON,
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'Content-Type':  'application/json',
+        'Prefer':        'return=representation',
       }
+    };
 
-      if (!dbPath) throw new Error('mhb_clean.db not found. Please place it in the data/ folder.');
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error(`Supabase ${method} ${path_} [${res.statusCode}]: ${data}`));
+          return;
+        }
+        try { resolve(data ? JSON.parse(data) : null); }
+        catch { resolve(null); }
+      });
+    });
 
-      const SQL = await initSqlJs();
-      const fileBuffer = fs.readFileSync(dbPath);
-      this.db = new SQL.Database(fileBuffer);
+    req.on('error', reject);
+    if (body) req.write(JSON.stringify(body));
+    req.end();
+  });
+}
 
-      // ── Create books table if it doesn't exist ──
-      this.db.run(`
-        CREATE TABLE IF NOT EXISTS books (
-          id   INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL UNIQUE
-        )
-      `);
+const sb = {
+  get:    (table, query = '')  => sbFetch('GET',    `${table}${query}`),
+  post:   (table, body)        => sbFetch('POST',   table, body),
+  patch:  (table, query, body) => sbFetch('PATCH',  `${table}${query}`, body),
+  delete: (table, query)       => sbFetch('DELETE', `${table}${query}`),
+};
 
-      // ── Add book_id column to hymns if it doesn't exist ──
-      const cols = this.query(`PRAGMA table_info(hymns)`);
-      const hasBookId = cols.some(c => c.name === 'book_id');
-      if (!hasBookId) {
-        this.db.run(`ALTER TABLE hymns ADD COLUMN book_id INTEGER REFERENCES books(id)`);
-      }
+// ─────────────────────────────────────────────
+// Local SQLite cache (for offline use)
+// ─────────────────────────────────────────────
+class LocalCache {
+  constructor() { this.db = null; }
 
-      // ── Seed default book for existing hymns ──
-      const books = this.getAllBooks();
-      if (books.length === 0) {
-        this.db.run(`INSERT INTO books (name) VALUES (?)`, ['Methodist Hymn Book']);
-        const book = this.queryOne(`SELECT id FROM books WHERE name = ?`, ['Methodist Hymn Book']);
-        this.db.run(`UPDATE hymns SET book_id = ? WHERE book_id IS NULL`, [book.id]);
-      }
-
-      console.log('Connected to database:', dbPath);
-    } catch (err) {
-      console.error('Database connection failed:', err.message);
-      throw err;
+  async open() {
+    const SQL    = await initSqlJs();
+    const dbPath = getCachedDbPath();
+    if (fs.existsSync(dbPath)) {
+      this.db = new SQL.Database(fs.readFileSync(dbPath));
+    } else {
+      this.db = new SQL.Database();
+      this._createTables();
+      this._save();
     }
   }
 
-  run(sql, params = []) {
-    this.db.run(sql, params);
+  _createTables() {
+    this.db.run(`CREATE TABLE IF NOT EXISTS books (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE)`);
+    this.db.run(`CREATE TABLE IF NOT EXISTS hymns (id INTEGER PRIMARY KEY, number INTEGER, title TEXT, author TEXT, book_id INTEGER)`);
+    this.db.run(`CREATE TABLE IF NOT EXISTS hymn_blocks (id INTEGER PRIMARY KEY, hymn_id INTEGER, position INTEGER, type TEXT, label TEXT, text TEXT)`);
+  }
+
+  _save() {
+    fs.writeFileSync(getCachedDbPath(), Buffer.from(this.db.export()));
   }
 
   query(sql, params = []) {
     const results = this.db.exec(sql, params);
-    if (!results || results.length === 0) return [];
+    if (!results || !results.length) return [];
     const { columns, values } = results[0];
     return values.map(row => {
       const obj = {};
@@ -71,106 +105,224 @@ class Database {
     });
   }
 
-  queryOne(sql, params = []) {
-    const rows = this.query(sql, params);
-    return rows.length > 0 ? rows[0] : null;
+  // Rebuild cache from Supabase data
+  async rebuild(books, hymns, blocks) {
+    this.db = (await initSqlJs()).constructor ? new (await initSqlJs()).Database() : this.db;
+    const SQL = await initSqlJs();
+    this.db   = new SQL.Database();
+    this._createTables();
+
+    for (const b of books) {
+      this.db.run(`INSERT OR REPLACE INTO books (id, name) VALUES (?, ?)`, [b.id, b.name]);
+    }
+    for (const h of hymns) {
+      this.db.run(
+        `INSERT OR REPLACE INTO hymns (id, number, title, author, book_id) VALUES (?,?,?,?,?)`,
+        [h.id, h.number, h.title, h.author || null, h.book_id]
+      );
+    }
+    for (const bl of blocks) {
+      this.db.run(
+        `INSERT OR REPLACE INTO hymn_blocks (id, hymn_id, position, type, label, text) VALUES (?,?,?,?,?,?)`,
+        [bl.id, bl.hymn_id, bl.position, bl.type, bl.label, bl.text]
+      );
+    }
+
+    this._save();
+    console.log(`Cache rebuilt: ${books.length} books, ${hymns.length} hymns, ${blocks.length} blocks`);
   }
 
-  // ── Books ────────────────────────────────────────────────
-  getAllBooks() {
-    return this.query(`SELECT id, name FROM books ORDER BY name ASC`);
-  }
-
-  addBook(name) {
-    this.db.run(`INSERT INTO books (name) VALUES (?)`, [name]);
-    return this.queryOne(`SELECT id, name FROM books WHERE name = ?`, [name]);
+  updateBook(id, name) {
+    this.db.run(`INSERT OR REPLACE INTO books (id, name) VALUES (?, ?)`, [id, name]);
+    this._save();
   }
 
   deleteBook(id) {
-    // Unassign hymns from this book before deleting
     this.db.run(`UPDATE hymns SET book_id = NULL WHERE book_id = ?`, [id]);
     this.db.run(`DELETE FROM books WHERE id = ?`, [id]);
+    this._save();
   }
 
-  // ── Hymns ────────────────────────────────────────────────
-  getAllHymns(bookId = null) {
-    if (bookId) {
-      return this.query(`
-        SELECT id, number, title, author, book_id
-        FROM hymns WHERE book_id = ?
-        ORDER BY number ASC LIMIT 100
-      `, [bookId]);
-    }
-    return this.query(`
-      SELECT id, number, title, author, book_id
-      FROM hymns ORDER BY number ASC LIMIT 100
-    `);
-  }
-
-  searchByNumber(number, bookId = null) {
-    if (bookId) {
-      const result = this.queryOne(`
-        SELECT id, number, title, author, book_id FROM hymns
-        WHERE number = ? AND book_id = ?
-      `, [number, bookId]);
-      return result ? [result] : [];
-    }
-    const result = this.queryOne(`
-      SELECT id, number, title, author, book_id FROM hymns WHERE number = ?
-    `, [number]);
-    return result ? [result] : [];
-  }
-
-  searchByTitle(query, bookId = null) {
-    if (bookId) {
-      return this.query(`
-        SELECT id, number, title, author, book_id FROM hymns
-        WHERE LOWER(title) LIKE LOWER(?) AND book_id = ?
-        ORDER BY number ASC LIMIT 50
-      `, [`%${query}%`, bookId]);
-    }
-    return this.query(`
-      SELECT id, number, title, author, book_id FROM hymns
-      WHERE LOWER(title) LIKE LOWER(?)
-      ORDER BY number ASC LIMIT 50
-    `, [`%${query}%`]);
-  }
-
-  addHymn({ number, title, author, bookId }) {
+  updateHymn(h) {
     this.db.run(
-      `INSERT INTO hymns (number, title, author, book_id) VALUES (?, ?, ?, ?)`,
-      [number, title, author || null, bookId]
+      `INSERT OR REPLACE INTO hymns (id, number, title, author, book_id) VALUES (?,?,?,?,?)`,
+      [h.id, h.number, h.title, h.author || null, h.book_id]
     );
-    return this.queryOne(
-      `SELECT id, number, title, author, book_id FROM hymns WHERE rowid = last_insert_rowid()`
-    );
-  }
-
-  updateHymn({ id, number, title, author, bookId }) {
-    this.db.run(
-      `UPDATE hymns SET number = ?, title = ?, author = ?, book_id = ? WHERE id = ?`,
-      [number, title, author || null, bookId, id]
-    );
+    this._save();
   }
 
   deleteHymn(id) {
     this.db.run(`DELETE FROM hymn_blocks WHERE hymn_id = ?`, [id]);
     this.db.run(`DELETE FROM hymns WHERE id = ?`, [id]);
+    this._save();
+  }
+
+  updateBlock(bl) {
+    this.db.run(
+      `INSERT OR REPLACE INTO hymn_blocks (id, hymn_id, position, type, label, text) VALUES (?,?,?,?,?,?)`,
+      [bl.id, bl.hymn_id, bl.position, bl.type, bl.label, bl.text]
+    );
+    this._save();
+  }
+
+  deleteBlock(id) {
+    this.db.run(`DELETE FROM hymn_blocks WHERE id = ?`, [id]);
+    this._save();
+  }
+}
+
+// ─────────────────────────────────────────────
+// Main Database class
+// ─────────────────────────────────────────────
+class Database {
+  constructor() {
+    this.cache   = new LocalCache();
+    this.online  = false;
+  }
+
+  async connect() {
+    // Always open local cache first — app is usable immediately
+    await this.cache.open();
+    console.log('Local cache loaded.');
+
+    // Try to sync from Supabase in background
+    this._syncFromCloud().catch(err => {
+      console.log('Cloud sync skipped (offline):', err.message);
+    });
+  }
+
+  async _syncFromCloud() {
+    console.log('Syncing from Supabase...');
+    const [books, hymns, blocks] = await Promise.all([
+      sb.get('books',       '?order=id'),
+      sb.get('hymns',       '?order=id&select=id,number,title,author,book_id'),
+      sb.get('hymn_blocks', '?order=id'),
+    ]);
+    await this.cache.rebuild(books, hymns, blocks);
+    this.online = true;
+    console.log('Synced from Supabase successfully.');
+  }
+
+  // ── Books ──────────────────────────────────────────────
+  getAllBooks() {
+    return this.cache.query(`SELECT id, name FROM books ORDER BY name ASC`);
+  }
+
+  async addBook(name) {
+    const rows = await sb.post('books', { name });
+    const book = Array.isArray(rows) ? rows[0] : rows;
+    this.cache.updateBook(book.id, book.name);
+    return book;
+  }
+
+  async deleteBook(id) {
+    await sb.patch('hymns', `?book_id=eq.${id}`, { book_id: null });
+    await sb.delete('books', `?id=eq.${id}`);
+    this.cache.deleteBook(id);
+  }
+
+  // ── Hymns ──────────────────────────────────────────────
+  getAllHymns(bookId = null) {
+    if (bookId) {
+      return this.cache.query(
+        `SELECT id, number, title, author, book_id FROM hymns WHERE book_id = ? ORDER BY number ASC LIMIT 100`,
+        [bookId]
+      );
+    }
+    return this.cache.query(
+      `SELECT id, number, title, author, book_id FROM hymns ORDER BY number ASC LIMIT 100`
+    );
+  }
+
+  searchByNumber(number, bookId = null) {
+    const rows = bookId
+      ? this.cache.query(`SELECT id, number, title, author, book_id FROM hymns WHERE number = ? AND book_id = ?`, [number, bookId])
+      : this.cache.query(`SELECT id, number, title, author, book_id FROM hymns WHERE number = ?`, [number]);
+    return rows;
+  }
+
+  searchByTitle(query, bookId = null) {
+    const rows = bookId
+      ? this.cache.query(
+          `SELECT id, number, title, author, book_id FROM hymns WHERE LOWER(title) LIKE LOWER(?) AND book_id = ? ORDER BY number ASC LIMIT 50`,
+          [`%${query}%`, bookId]
+        )
+      : this.cache.query(
+          `SELECT id, number, title, author, book_id FROM hymns WHERE LOWER(title) LIKE LOWER(?) ORDER BY number ASC LIMIT 50`,
+          [`%${query}%`]
+        );
+    return rows;
+  }
+
+  async addHymn({ number, title, author, bookId }) {
+    const rows = await sb.post('hymns', { number, title, author: author || null, book_id: bookId });
+    const hymn = Array.isArray(rows) ? rows[0] : rows;
+    this.cache.updateHymn(hymn);
+    return hymn;
+  }
+
+  async updateHymn({ id, number, title, author, bookId }) {
+    await sb.patch('hymns', `?id=eq.${id}`, { number, title, author: author || null, book_id: bookId });
+    this.cache.updateHymn({ id, number, title, author, book_id: bookId });
+  }
+
+  async deleteHymn(id) {
+    await sb.delete('hymn_blocks', `?hymn_id=eq.${id}`);
+    await sb.delete('hymns', `?id=eq.${id}`);
+    this.cache.deleteHymn(id);
   }
 
   getHymnById(id) {
-    return this.queryOne(`
-      SELECT id, number, title, author, book_id FROM hymns WHERE id = ?
-    `, [id]);
+    return this.cache.query(`SELECT id, number, title, author, book_id FROM hymns WHERE id = ?`, [id])[0] || null;
   }
 
-  // ── Blocks ───────────────────────────────────────────────
+  // ── Blocks ─────────────────────────────────────────────
   getHymnBlocks(hymnId) {
-    return this.query(`
-      SELECT id, hymn_id, position, type, label, text
-      FROM hymn_blocks WHERE hymn_id = ?
-      ORDER BY position ASC
-    `, [hymnId]);
+    return this.cache.query(
+      `SELECT id, hymn_id, position, type, label, text FROM hymn_blocks WHERE hymn_id = ? ORDER BY position ASC`,
+      [hymnId]
+    );
+  }
+
+  async addBlock({ hymnId, type, label, text, position }) {
+    const rows  = await sb.post('hymn_blocks', { hymn_id: hymnId, type, label, text, position });
+    const block = Array.isArray(rows) ? rows[0] : rows;
+    this.cache.updateBlock(block);
+    return block;
+  }
+
+  async updateBlock({ id, label, text, type }) {
+    // Get current block for hymn_id
+    const current = this.cache.query(`SELECT hymn_id, position FROM hymn_blocks WHERE id = ?`, [id])[0];
+    await sb.patch('hymn_blocks', `?id=eq.${id}`, { label, text, type });
+    if (current) this.cache.updateBlock({ id, hymn_id: current.hymn_id, position: current.position, type, label, text });
+  }
+
+  async deleteBlock(id) {
+    await sb.delete('hymn_blocks', `?id=eq.${id}`);
+    this.cache.deleteBlock(id);
+  }
+
+  async reorderBlocks(blocks) {
+    // Update each block's position in Supabase
+    await Promise.all(blocks.map(({ id, position }) =>
+      sb.patch('hymn_blocks', `?id=eq.${id}`, { position })
+    ));
+    // Update cache
+    blocks.forEach(({ id, position }) => {
+      const current = this.cache.query(`SELECT * FROM hymn_blocks WHERE id = ?`, [id])[0];
+      if (current) this.cache.updateBlock({ ...current, position });
+    });
+  }
+
+  // ── Legacy run() for any direct SQL still called from main.js ──
+  run(sql, params = []) {
+    this.cache.db.run(sql, params);
+    this.cache._save();
+  }
+
+  query(sql, params = []) {
+    return this.cache.query(sql, params);
   }
 }
 

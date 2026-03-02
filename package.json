@@ -9,7 +9,8 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "migrate": ""
   },
   "devDependencies": {
     "electron": "^40.6.1",

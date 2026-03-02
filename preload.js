@@ -28,6 +28,10 @@ contextBridge.exposeInMainWorld('hymnAPI', {
   blankScreen:     ()     => ipcRenderer.invoke('blank-screen'),
   setFontSize:     (size) => ipcRenderer.invoke('set-font-size', size),
 
+  // ── CSV Export ────────────────────────────────────────
+  exportCsv:    ()               => ipcRenderer.invoke('export-csv'),
+  saveCsvFile:  (data)           => ipcRenderer.invoke('save-csv-file', data),
+
   // ── Editor Auth ────────────────────────────────────────
   verifyEditorPassword: (pwd) => ipcRenderer.invoke('verify-editor-password', pwd),
   isEditorUnlocked:     ()    => ipcRenderer.invoke('is-editor-unlocked'),

@@ -2,8 +2,8 @@
 :root {
   --bg:           #ffffff;
   --text-verse:   #08631c;
-  --text-refrain: #a8d4ff;
-  --text-chorus:  #d4b8ff;
+  --text-refrain: #08631c;
+  --text-chorus: #08631c;
   --text-meta:    #ee1515df;
   --text-label:   #ee1515df;
   --accent:       #c9a84c;

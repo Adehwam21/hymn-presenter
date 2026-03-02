@@ -5,6 +5,7 @@ const path   = require('path');
 const Database        = require('./data/database');
 const { syncDatabase } = require('./data/db-sync');
 
+
 let operatorWindow   = null;
 let projectionWindow = null;
 let editorWindow     = null;
@@ -25,7 +26,7 @@ let editorUnlocked = false;
 function createOperatorWindow() {
   operatorWindow = new BrowserWindow({
     width: 1200, height: 750, minWidth: 900, minHeight: 600,
-    title: 'Hymn Presemter',
+    title: 'NHUC Hymn Projector',
     backgroundColor: '#0f0f17',
     icon: path.join(__dirname, 'assets/icons', 'logo-sharpened.ico'),
     webPreferences: {
@@ -121,14 +122,14 @@ function createAppMenu() {
           click: () => {
             dialog.showMessageBox({
               type: 'info',
-              title: 'About Hymn Presenter',
-              message: 'Hymn Presenter',
+              title: 'About NHUC Hymn Projector',
+              message: 'NHUC Hymn Projector',
               detail: [
                 `Version: ${app.getVersion()}`,
                 `Built for New Hope Universal Church, Ghana`,
                 ``,
                 `Developer: Aaron Katey Kudadjie`,
-                `GitHub: https://github.com/Adehwam21/`,
+                `Github: https://www.github.com/Adehwam21`,
                 ``,
                 `© ${new Date().getFullYear()} NHUC. All rights reserved.`
               ].join('\n')
@@ -185,12 +186,7 @@ ipcMain.handle('open-editor', () => {
 // IPC — DB Sync
 // ─────────────────────────────────────────────
 ipcMain.handle('trigger-db-sync', async () => {
-  const result = await syncDatabase((pct) => {
-    if (operatorWindow) operatorWindow.webContents.send('db-sync-progress', pct);
-  });
-  if (result.status === 'updated') {
-    try { await db.connect(); } catch (err) { console.error('DB reload failed:', err.message); }
-  }
+  const result = await syncDatabase(db);
   if (operatorWindow) operatorWindow.webContents.send('db-sync-done', result);
   return result;
 });
@@ -202,12 +198,12 @@ ipcMain.handle('get-books', () => {
   try { return db.getAllBooks(); } catch (err) { console.error(err); return []; }
 });
 
-ipcMain.handle('add-book', (event, name) => {
-  try { return db.addBook(name); } catch (err) { console.error(err); return null; }
+ipcMain.handle('add-book', async (event, name) => {
+  try { return await db.addBook(name); } catch (err) { console.error(err); return null; }
 });
 
-ipcMain.handle('delete-book', (event, id) => {
-  try { db.deleteBook(id); return true; } catch (err) { console.error(err); return false; }
+ipcMain.handle('delete-book', async (event, id) => {
+  try { await db.deleteBook(id); return true; } catch (err) { console.error(err); return false; }
 });
 
 // ─────────────────────────────────────────────
@@ -222,16 +218,16 @@ ipcMain.handle('search-hymns', (event, { query, bookId } = {}) => {
   } catch (err) { console.error(err); return []; }
 });
 
-ipcMain.handle('add-hymn', (event, data) => {
-  try { return db.addHymn(data); } catch (err) { console.error(err); return null; }
+ipcMain.handle('add-hymn', async (event, data) => {
+  try { return await db.addHymn(data); } catch (err) { console.error(err); return null; }
 });
 
-ipcMain.handle('update-hymn', (event, data) => {
-  try { db.updateHymn(data); return true; } catch (err) { console.error(err); return false; }
+ipcMain.handle('update-hymn', async (event, data) => {
+  try { await db.updateHymn(data); return true; } catch (err) { console.error(err); return false; }
 });
 
-ipcMain.handle('delete-hymn', (event, id) => {
-  try { db.deleteHymn(id); return true; } catch (err) { console.error(err); return false; }
+ipcMain.handle('delete-hymn', async (event, id) => {
+  try { await db.deleteHymn(id); return true; } catch (err) { console.error(err); return false; }
 });
 
 // ─────────────────────────────────────────────
@@ -241,36 +237,24 @@ ipcMain.handle('get-hymn-blocks', (event, hymnId) => {
   try { return db.getHymnBlocks(hymnId); } catch (err) { console.error(err); return []; }
 });
 
-ipcMain.handle('update-block', (event, { id, label, text, type }) => {
-  try {
-    db.run(`UPDATE hymn_blocks SET label=?, text=?, type=? WHERE id=?`, [label, text, type, id]);
-    return true;
-  } catch (err) { console.error(err); return false; }
-});
-
-ipcMain.handle('delete-block', (event, id) => {
-  try { db.run(`DELETE FROM hymn_blocks WHERE id=?`, [id]); return true; }
+ipcMain.handle('update-block', async (event, { id, label, text, type }) => {
+  try { await db.updateBlock({ id, label, text, type }); return true; }
   catch (err) { console.error(err); return false; }
 });
 
-ipcMain.handle('add-block', (event, { hymnId, type, label, text, position }) => {
-  try {
-    db.run(
-      `INSERT INTO hymn_blocks (hymn_id, type, label, text, position) VALUES (?,?,?,?,?)`,
-      [hymnId, type, label, text, position]
-    );
-    const row = db.query(`SELECT id, hymn_id, position, type, label, text FROM hymn_blocks WHERE rowid = last_insert_rowid()`);
-    return row[0] || null;
-  } catch (err) { console.error(err); return null; }
+ipcMain.handle('delete-block', async (event, id) => {
+  try { await db.deleteBlock(id); return true; }
+  catch (err) { console.error(err); return false; }
 });
 
-ipcMain.handle('reorder-blocks', (event, blocks) => {
-  try {
-    blocks.forEach(({ id, position }) => {
-      db.run(`UPDATE hymn_blocks SET position=? WHERE id=?`, [position, id]);
-    });
-    return true;
-  } catch (err) { console.error(err); return false; }
+ipcMain.handle('add-block', async (event, { hymnId, type, label, text, position }) => {
+  try { return await db.addBlock({ hymnId, type, label, text, position }); }
+  catch (err) { console.error(err); return null; }
+});
+
+ipcMain.handle('reorder-blocks', async (event, blocks) => {
+  try { await db.reorderBlocks(blocks); return true; }
+  catch (err) { console.error(err); return false; }
 });
 
 // ─────────────────────────────────────────────
@@ -338,3 +322,59 @@ function setupAutoUpdater() {
 
   ipcMain.handle('install-update', () => { autoUpdater.quitAndInstall(); return true; });
 }
+
+// ─────────────────────────────────────────────
+// IPC — Export to CSV (one-time Supabase import)
+// ─────────────────────────────────────────────
+ipcMain.handle('export-csv', () => {
+  try {
+    const books  = db.query(`SELECT id, name FROM books ORDER BY id`);
+    const hymns  = db.query(`SELECT id, number, title, author, book_id FROM hymns ORDER BY id`);
+    const blocks = db.query(`SELECT id, hymn_id, position, type, label, text FROM hymn_blocks ORDER BY id`);
+
+    const toCSV = (rows) => {
+      if (!rows.length) return '';
+      const headers = Object.keys(rows[0]);
+      const escape  = (val) => {
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+      const lines = [
+        headers.join(','),
+        ...rows.map(row => headers.map(h => escape(row[h])).join(','))
+      ];
+      return lines.join('\n');
+    };
+
+    return {
+      books:  toCSV(books),
+      hymns:  toCSV(hymns),
+      blocks: toCSV(blocks),
+      counts: { books: books.length, hymns: hymns.length, blocks: blocks.length }
+    };
+  } catch (err) {
+    console.error('Export error:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('save-csv-file', async (event, { filename, content }) => {
+  const { dialog } = require('electron');
+  const fs = require('fs');
+
+  const { filePath } = await dialog.showSaveDialog({
+    title: `Save ${filename}`,
+    defaultPath: filename,
+    filters: [{ name: 'CSV Files', extensions: ['csv'] }]
+  });
+
+  if (filePath) {
+    fs.writeFileSync(filePath, content, 'utf8');
+    return true;
+  }
+  return false;
+});
