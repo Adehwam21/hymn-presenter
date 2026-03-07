@@ -191,16 +191,32 @@ class Database {
     });
   }
 
+  // Fetch all rows from a table, paginating past Supabase's 1000-row limit
+  async _fetchAll(table, query = '') {
+    const PAGE = 1000;
+    let rows = [];
+    let from = 0;
+    while (true) {
+      const sep   = query.includes('?') ? '&' : '?';
+      const batch = await sb.get(table, `${query}${sep}order=id&limit=${PAGE}&offset=${from}`);
+      if (!batch || !batch.length) break;
+      rows = rows.concat(batch);
+      if (batch.length < PAGE) break;
+      from += PAGE;
+    }
+    return rows;
+  }
+
   async _syncFromCloud() {
     console.log('Syncing from Supabase...');
     const [books, hymns, blocks] = await Promise.all([
-      sb.get('books',       '?order=id'),
-      sb.get('hymns',       '?order=id&select=id,number,title,author,book_id'),
-      sb.get('hymn_blocks', '?order=id'),
+      this._fetchAll('books'),
+      this._fetchAll('hymns', '?select=id,number,title,author,book_id'),
+      this._fetchAll('hymn_blocks'),
     ]);
     await this.cache.rebuild(books, hymns, blocks);
     this.online = true;
-    console.log('Synced from Supabase successfully.');
+    console.log(`Synced from Supabase: ${books.length} books, ${hymns.length} hymns, ${blocks.length} blocks`);
   }
 
   // ── Books ──────────────────────────────────────────────
@@ -225,12 +241,12 @@ class Database {
   getAllHymns(bookId = null) {
     if (bookId) {
       return this.cache.query(
-        `SELECT id, number, title, author, book_id FROM hymns WHERE book_id = ? ORDER BY number ASC LIMIT 100`,
+        `SELECT id, number, title, author, book_id FROM hymns WHERE book_id = ? ORDER BY number ASC`,
         [bookId]
       );
     }
     return this.cache.query(
-      `SELECT id, number, title, author, book_id FROM hymns ORDER BY number ASC LIMIT 100`
+      `SELECT id, number, title, author, book_id FROM hymns ORDER BY number ASC`
     );
   }
 
@@ -244,11 +260,11 @@ class Database {
   searchByTitle(query, bookId = null) {
     const rows = bookId
       ? this.cache.query(
-          `SELECT id, number, title, author, book_id FROM hymns WHERE LOWER(title) LIKE LOWER(?) AND book_id = ? ORDER BY number ASC LIMIT 50`,
+          `SELECT id, number, title, author, book_id FROM hymns WHERE LOWER(title) LIKE LOWER(?) AND book_id = ? ORDER BY number ASC`,
           [`%${query}%`, bookId]
         )
       : this.cache.query(
-          `SELECT id, number, title, author, book_id FROM hymns WHERE LOWER(title) LIKE LOWER(?) ORDER BY number ASC LIMIT 50`,
+          `SELECT id, number, title, author, book_id FROM hymns WHERE LOWER(title) LIKE LOWER(?) ORDER BY number ASC`,
           [`%${query}%`]
         );
     return rows;
