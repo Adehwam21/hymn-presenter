@@ -56,6 +56,7 @@ contextBridge.exposeInMainWorld('hymnAPI', {
   onUpdateAvailable:  (cb) => ipcRenderer.on('update-available', (e, info) => cb(info)),
   onUpdateProgress:   (cb) => ipcRenderer.on('update-progress', (e, pct) => cb(pct)),
   onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', cb),
+  onUpdateError:      (cb) => ipcRenderer.on('update-error', (e, msg) => cb(msg)),
 
   // ── Themes ─────────────────────────────────────────
   getThemes:      ()         => ipcRenderer.invoke('get-themes'),

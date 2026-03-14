@@ -124,6 +124,18 @@ function createAppMenu() {
           label: 'Check for Database Updates',
           click: () => { if (operatorWindow) operatorWindow.webContents.send('manual-db-sync'); }
         },
+        {
+          label: 'Check for App Updates',
+          click: async () => {
+            if (!app.isPackaged) {
+              dialog.showMessageBox({ type: 'info', message: 'Updater is disabled in development mode.' });
+              return;
+            }
+            autoUpdater.checkForUpdates().catch(err => {
+              dialog.showMessageBox({ type: 'error', title: 'Update Check Failed', message: err.message });
+            });
+          }
+        },
         { type: 'separator' },
         {
           label: 'Projection Theme',
@@ -379,32 +391,87 @@ ipcMain.handle('set-font-size', (event, size) => {
 // Auto Updater (app version updates)
 // ─────────────────────────────────────────────
 function setupAutoUpdater() {
-  if (!app.isPackaged) return;
+  // Only check for updates in packaged app
+  if (!app.isPackaged) {
+    console.log('Auto-updater disabled in development.');
+    return;
+  }
+
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
 
+  // Add error handler so failures are logged clearly
+  autoUpdater.on('error', (err) => {
+    console.error('Auto-updater error:', err.message);
+    if (operatorWindow) {
+      operatorWindow.webContents.send('update-error', err.message);
+    }
+  });
+
+  // Check for updates 5 seconds after launch
   setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(err => console.log('Update check failed:', err.message));
+    console.log('Checking for updates...');
+    autoUpdater.checkForUpdates().catch(err => {
+      console.error('Update check failed:', err.message);
+    });
   }, 5000);
 
   autoUpdater.on('update-available', (info) => {
-    if (operatorWindow) operatorWindow.webContents.send('update-available', { version: info.version });
+    console.log('Update available:', info.version);
+    if (operatorWindow) {
+      operatorWindow.webContents.send('update-available', { version: info.version });
+    }
   });
 
-  autoUpdater.on('update-not-available', () => console.log('App is up to date.'));
-
-  ipcMain.handle('download-update', () => { autoUpdater.downloadUpdate(); return true; });
+  autoUpdater.on('update-not-available', () => {
+    console.log('App is up to date.');
+  });
 
   autoUpdater.on('download-progress', (progress) => {
-    if (operatorWindow) operatorWindow.webContents.send('update-progress', Math.round(progress.percent));
+    console.log(`Download progress: ${Math.round(progress.percent)}%`);
+    if (operatorWindow) {
+      operatorWindow.webContents.send('update-progress', Math.round(progress.percent));
+    }
   });
 
   autoUpdater.on('update-downloaded', () => {
-    if (operatorWindow) operatorWindow.webContents.send('update-downloaded');
+    console.log('Update downloaded — ready to install.');
+    if (operatorWindow) {
+      operatorWindow.webContents.send('update-downloaded');
+    }
   });
-
-  ipcMain.handle('install-update', () => { autoUpdater.quitAndInstall(); return true; });
 }
+
+// ─────────────────────────────────────────────
+// IPC — App Updates
+// Registered outside setupAutoUpdater so they
+// are always available regardless of isPackaged
+// ─────────────────────────────────────────────
+ipcMain.handle('download-update', async () => {
+  try {
+    await autoUpdater.downloadUpdate();
+    return true;
+  } catch (err) {
+    console.error('Download update failed:', err.message);
+    return false;
+  }
+});
+
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall();
+  return true;
+});
+
+ipcMain.handle('check-for-updates', async () => {
+  if (!app.isPackaged) return { message: 'Updater disabled in development' };
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { checking: true };
+  } catch (err) {
+    console.error('Manual update check failed:', err.message);
+    return { error: err.message };
+  }
+});
 
 // ─────────────────────────────────────────────
 // IPC — Export to CSV (one-time Supabase import)

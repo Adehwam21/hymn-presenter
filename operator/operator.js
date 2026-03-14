@@ -321,9 +321,11 @@ function closeSyncModal() {
 // ═════════════════════════════════════════════
 function setupUpdateListeners() {
   window.hymnAPI.onUpdateAvailable((info) => {
-    const bar = document.getElementById('updateBar');
-    document.getElementById('updateMessage').textContent = `App version ${info.version} is available.`;
-    bar.style.display = 'flex';
+    document.getElementById('updateMessage').textContent = `Version ${info.version} is available.`;
+    document.getElementById('updateBtn').textContent = 'Download Update';
+    document.getElementById('updateBtn').disabled = false;
+    document.getElementById('updateBar').style.display = 'flex';
+    updateReady = false;
   });
 
   window.hymnAPI.onUpdateProgress((pct) => {
@@ -333,11 +335,19 @@ function setupUpdateListeners() {
   });
 
   window.hymnAPI.onUpdateDownloaded(() => {
-    document.getElementById('updateMessage').textContent = 'Update ready. Restart to install.';
+    document.getElementById('updateMessage').textContent = 'Update downloaded — restart to install.';
     const btn = document.getElementById('updateBtn');
     btn.textContent = 'Restart & Install';
     btn.disabled = false;
     updateReady = true;
+  });
+
+  window.hymnAPI.onUpdateError((msg) => {
+    document.getElementById('updateMessage').textContent = `Update failed: ${msg}`;
+    const btn = document.getElementById('updateBtn');
+    btn.textContent = 'Retry';
+    btn.disabled = false;
+    updateReady = false;
   });
 }
 
