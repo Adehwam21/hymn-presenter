@@ -4,7 +4,7 @@ contextBridge.exposeInMainWorld('hymnAPI', {
 
   // ── Books ──────────────────────────────────────────────
   getBooks:   ()     => ipcRenderer.invoke('get-books'),
-  addBook:    (name) => ipcRenderer.invoke('add-book', name),
+  addBook:    (name,alias) => ipcRenderer.invoke('add-book', name, alias),
   deleteBook: (id)   => ipcRenderer.invoke('delete-book', id),
 
   // ── Hymns ──────────────────────────────────────────────

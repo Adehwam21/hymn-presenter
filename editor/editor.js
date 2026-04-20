@@ -93,9 +93,11 @@ function cancelAddBook() {
 
 async function saveNewBook() {
   const name = document.getElementById('newBookName').value.trim();
+  const alias = document.getElementById('newBookAlias').value.trim();
   if (!name) { alert('Please enter a book name.'); return; }
+  if (!alias) { alert('Please enter a book name.'); return; }
 
-  const book = await window.hymnAPI.addBook(name);
+  const book = await window.hymnAPI.addBook(name, alias);
   if (!book || !book.id) {
     alert('Could not add book. It may already exist, or the server is unreachable.');
     return;

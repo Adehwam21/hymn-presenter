@@ -293,8 +293,8 @@ ipcMain.handle('get-books', () => {
   try { return db.getAllBooks(); } catch (err) { console.error(err); return []; }
 });
 
-ipcMain.handle('add-book', async (event, name) => {
-  try { return await db.addBook(name); } catch (err) { console.error(err); return null; }
+ipcMain.handle('add-book', async (event, name, alias) => {
+  try { return await db.addBook(name, alias); } catch (err) { console.error(err); return null; }
 });
 
 ipcMain.handle('delete-book', async (event, id) => {

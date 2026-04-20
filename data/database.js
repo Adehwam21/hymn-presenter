@@ -303,12 +303,12 @@ class Database {
     return this.cache.query(`SELECT id, name FROM books ORDER BY name ASC`);
   }
 
-  async addBook(name) {
+  async addBook(name, alias) {
     const id   = this._nextId('books');
-    const rows = await sb.post('books', { id, name });
+    const rows = await sb.post('books', { id, name, alias });
     const book = Array.isArray(rows) ? rows[0] : rows;
     if (!book || !book.id) throw new Error('Supabase did not return the inserted book.');
-    this.cache.updateBook(book.id, book.name);
+    this.cache.updateBook(book.id, book.name, book.alias);
     return book;
   }
 
